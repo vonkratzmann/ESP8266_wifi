@@ -1,4 +1,9 @@
 #include <ESP8266WiFi.h>
+
+//
+#define DEBUG 0
+
+
 // WiFi Definitions
 const char* ssid = "iiNet22B8AF";
 const char* password = "F314F397F7";
@@ -10,54 +15,63 @@ const int DIGITAL_PIN = 2;      //GPIO-2
 WiFiServer server(80);
 //----------------------------
 
+
 void setup() {        // run once
   initHardware();
   setupWiFi();
   server.begin();
   Serial.println("Server started");
-}
-//----------------------------
+
+  // Shutdown serial comms, so can use the led
+  disableSerialComms();
+  // Enable led hardware so we can turn led on and off
+  enableLedHw();
+} //----------------------------
+
 
 // Main loop
 void loop() {
   // Listen for incoming clients
-  WiFiClient client = server.available();
-  if (client.connected()) {
-    Serial.println("New client");
+  WiFiClient wifiClient = server.available();
+  if (wifiClient) {
+    //Serial.println("Client Connected");
 
-    // Get the number of bytes available for reading by calling available(),
-    // that is, the amount of data that has been written to the client by the server it is connected to.
-    while (!client) {
-      delay(1);
-      yield();
-    }
-    String req = client.readStringUntil('\r');
-    Serial.println(req);
+    while (wifiClient.connected()) {
+      // Get the number of bytes available for reading by calling available(),
+      // that is, the amount of data that has been written by the client to the server.
+      if (wifiClient.available()) {
+        String req = wifiClient.readStringUntil('\r');
+        //Serial.println(req);
 
-    int val;
-    // Check if a valid command and value, update I/O and client
-    if (getCommand(req, &val)) {
-      //   digitalWrite(DIGITAL_PIN, val);
-      //    client.print(genPage(val));
-      client.print(getPage());
-    }
-    else {
-      Serial.println("Invalid request");
-    }
+        int val;
+        // Check if a valid command and value, update I/O and client if debugging enabled
+        if (getCommand(req, &val)) {
+          digitalWrite(LED_PIN, !val);    // Complement val as writing a zero turns led on
+          // wifiClient.print(genPage(val));
+          // wifiClient.print(getPage());
+        }
+        else {
+          //Serial.println("Invalid request");
+        }
 
-    // Discard any bytes that have been written to the client but not yet read.
-    client.flush();
+        // Discard any bytes that have been written to the client browser but not yet read.
+        wifiClient.flush();
+      }
+      delay(100); // Give the web server time to receive the data
+    }
+    // Close the connection
+    wifiClient.stop();
+    //Serial.println("Client disconnected");
   }
-}
+} //----------------------------
 
-//----------------------------
 
 void initHardware() {
   Serial.begin(115200);
   pinMode(DIGITAL_PIN, OUTPUT);
   digitalWrite(DIGITAL_PIN, LOW);
-}
-//----------------------------
+} //----------------------------
+
 
 void setupWiFi() {
   delay(10);
@@ -71,8 +85,23 @@ void setupWiFi() {
   }
   Serial.println("WiFi connected");
   Serial.println(WiFi.localIP());
-}
-//----------------------------
+} //----------------------------
+
+
+void disableSerialComms() {
+  // Give the serial monitor time to transmit the data
+  delay(1000);
+  Serial.flush();
+  Serial.end();
+} //----------------------------
+
+
+void enableLedHw() {
+  pinMode(LED_PIN, OUTPUT);
+  // Turn led off
+  digitalWrite(LED_PIN, HIGH);
+} //----------------------------
+
 
 /*
     Get the command
@@ -91,8 +120,8 @@ boolean getCommand(String s, int* val) {
     result = false;
 
   return result;
-}
-//----------------------------
+} //----------------------------
+
 
 /*
     Create HTML page that contains the status.
@@ -105,9 +134,7 @@ String genPage(int val) {
   s += (val) ? "high" : "low";
 
   return s;
-}
-//----------------------------
-
+} //----------------------------
 
 
 String getPage() {
@@ -132,9 +159,7 @@ String getPage() {
   page += "</body>";
   page += "</html>";
   return page;
-}
-//----------------------------
-
+} //----------------------------
 
 
 //End of file
