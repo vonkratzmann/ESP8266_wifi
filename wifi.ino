@@ -94,7 +94,7 @@ void processIncomingData(WiFiClient connectedClient) {
     int val;
     // Check if a valid command and value, update I/O and client if debugging enabled
     if (getCommand(req, &val)) {
-      digitalWrite(LED_PIN, !val);    // Complement val as writing a zero turns led on
+      digitalWrite(LED_PIN, val ? 0 : 1);    // Complement val as writing a zero turns led on
       // connectedClient.print(genPage(val));
       // connectedClient.print(getPage());
     }
@@ -118,9 +118,9 @@ boolean getCommand(String s, int* val) {
   boolean result = true;
 
   if (s.indexOf("/gpio/0") != -1)
-    *val = 0;
+    *val = false;
   else if (s.indexOf("/gpio/1") != -1)
-    *val = 1;
+    *val = true;
   else
     result = false;
 
@@ -137,6 +137,7 @@ String genPage(int val) {
 
   String s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\nGPIO is now ";
   s += (val) ? "high" : "low";
+  s += "</html>";
 
   return s;
 } //----------------------------
