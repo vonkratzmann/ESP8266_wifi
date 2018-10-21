@@ -1,8 +1,7 @@
 #include <ESP8266WiFi.h>
 
-//
-#define DEBUG 0
-
+// Used to enable/disable debug text to serial monitor
+const boolean DEBUG_WIFI = false;
 
 // WiFi Definitions
 const char* ssid = "iiNet22B8AF";
@@ -32,37 +31,18 @@ void setup() {        // run once
 // Main loop
 void loop() {
   // Listen for incoming clients
-  WiFiClient wifiClient = server.available();
-  if (wifiClient) {
-    //Serial.println("Client Connected");
+  WiFiClient wiFiClient = server.available();
+  if (wiFiClient) {
+    if (DEBUG_WIFI) Serial.println("Client Connected");
 
-    while (wifiClient.connected()) {
-      // Get the number of bytes available for reading by calling available(),
-      // that is, the amount of data that has been written by the client to the server.
-      if (wifiClient.available()) {
-        String req = wifiClient.readStringUntil('\r');
-        //Serial.println(req);
-
-        int val;
-        // Check if a valid command and value, update I/O and client if debugging enabled
-        if (getCommand(req, &val)) {
-          digitalWrite(LED_PIN, !val);    // Complement val as writing a zero turns led on
-          // wifiClient.print(genPage(val));
-          // wifiClient.print(getPage());
-        }
-        else {
-          //Serial.println("Invalid request");
-        }
-
-        // Discard any bytes that have been written to the client browser but not yet read.
-        wifiClient.flush();
-      }
-      delay(100); // Give the web server time to receive the data
+    while (wiFiClient.connected()) {
+      processIncomingData(wiFiClient);
     }
-    // Close the connection
-    wifiClient.stop();
-    //Serial.println("Client disconnected");
+    delay(100); // Give the web server time to receive the data
   }
+  // Close the connection
+  wiFiClient.stop();
+  if (DEBUG_WIFI) Serial.println("Client disconnected");
 } //----------------------------
 
 
@@ -89,8 +69,9 @@ void setupWiFi() {
 
 
 void disableSerialComms() {
+  Serial.println("Disabling serial comms");
   // Give the serial monitor time to transmit the data
-  delay(1000);
+  delay(500);
   Serial.flush();
   Serial.end();
 } //----------------------------
@@ -100,6 +81,30 @@ void enableLedHw() {
   pinMode(LED_PIN, OUTPUT);
   // Turn led off
   digitalWrite(LED_PIN, HIGH);
+} //----------------------------
+
+
+void processIncomingData(WiFiClient connectedClient) {
+  // Get the number of bytes available for reading by calling available(),
+  // that is, the amount of data that has been written by the connectedclient to the server.
+  if (connectedClient.available()) {
+    String req = connectedClient.readStringUntil('\r');
+    if (DEBUG_WIFI) Serial.println(req);
+
+    int val;
+    // Check if a valid command and value, update I/O and client if debugging enabled
+    if (getCommand(req, &val)) {
+      digitalWrite(LED_PIN, !val);    // Complement val as writing a zero turns led on
+      // connectedClient.print(genPage(val));
+      // connectedClient.print(getPage());
+    }
+    else {
+      if (DEBUG_WIFI) Serial.println("Invalid request");
+    }
+
+    // Discard any bytes that have been written to the client browser but not yet read.
+    connectedClient.flush();
+  }
 } //----------------------------
 
 
